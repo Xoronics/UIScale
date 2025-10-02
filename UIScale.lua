@@ -8,7 +8,6 @@ local EPSILON = 0.0005
 UIScaleDB = UIScaleDB or {}
 
 local frame = CreateFrame("Frame")
-local pendingScale
 
 local hasModernCVar = C_CVar and C_CVar.GetCVar
 local hasLegacyCVar = type(GetCVar) == "function"
@@ -20,13 +19,6 @@ local function getCVarValue(name)
     elseif hasLegacyCVar then
         return GetCVar(name)
     end
-end
-
-local function inCombat()
-    if InCombatLockdown then
-        return InCombatLockdown()
-    end
-    return false
 end
 
 local function clamp(value, minValue, maxValue)
@@ -93,19 +85,12 @@ local function applyScale(scale)
     local clamped = clamp(rounded, MIN_SCALE, MAX_SCALE)
     UIScaleDB.scale = clamped
 
-    if inCombat() then
-        pendingScale = clamped
-        frame:RegisterEvent("PLAYER_REGEN_ENABLED")
-        return clamped, false
-    end
-
     local currentScale = UIParent:GetScale()
     local needsUpdate = not currentScale or math.abs(currentScale - clamped) > EPSILON
     if needsUpdate then
         UIParent:SetScale(clamped)
     end
 
-    pendingScale = nil
     return clamped, needsUpdate
 end
 
@@ -118,23 +103,12 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         ensureDefaults()
         applyScale(UIScaleDB.scale)
         frame:RegisterEvent("PLAYER_LOGIN")
-        frame:RegisterEvent("PLAYER_ENTERING_WORLD")
         frame:RegisterEvent("UI_SCALE_CHANGED")
         frame:UnregisterEvent("ADDON_LOADED")
-    elseif event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then
+    elseif event == "PLAYER_LOGIN" then
         applyScale(UIScaleDB.scale)
     elseif event == "UI_SCALE_CHANGED" then
         applyScale(UIScaleDB.scale)
-    elseif event == "PLAYER_REGEN_ENABLED" then
-        if pendingScale then
-            local clamped, applied = applyScale(pendingScale)
-            if applied then
-                print("UIScale: Applied pending scale " .. describeScale(clamped) .. ".")
-            end
-        end
-        if not pendingScale then
-            frame:UnregisterEvent("PLAYER_REGEN_ENABLED")
-        end
     end
 end)
 
@@ -172,7 +146,7 @@ SlashCmdList["UISCALE"] = function(msg)
         if applied then
             print("UIScale: Reset to default scale " .. describeScale(clamped) .. ".")
         else
-            print("UIScale: Stored default scale " .. describeScale(clamped) .. " and will apply after combat.")
+            print("UIScale: Already at default scale " .. describeScale(clamped) .. ".")
         end
         return
     end
@@ -192,6 +166,6 @@ SlashCmdList["UISCALE"] = function(msg)
     if applied then
         print("UIScale: Applied scale " .. describeScale(clamped) .. ".")
     else
-        print("UIScale: Stored scale " .. describeScale(clamped) .. " and will apply after combat.")
+        print("UIScale: Scale already set to " .. describeScale(clamped) .. ".")
     end
 end
