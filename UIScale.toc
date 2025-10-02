@@ -1,0 +1,9 @@
+## Interface: 110107
+## Interface-Mists: 50500
+## Interface-Classic: 11507
+## Title: UIScale
+## Author: Converted WeakAura
+## Version: 1.0.0
+## Notes: Applies a custom UIParent scale each login/reload with optional slash command.
+## SavedVariables: UIScaleDB
+UIScale.lua
