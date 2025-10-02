@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Lua syntax lint
+        run: |
+          docker run --rm -v "${PWD}:/workspace" -w /workspace wowtesting/lua sh -c 'luac -p UIScale.lua'
+
+  release:
+    needs: lint
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build addon package
+        run: |
+          ADDON_NAME="UIScale"
+          RELEASE_DIR="dist"
+          mkdir -p "$RELEASE_DIR/$ADDON_NAME"
+          cp UIScale.lua UIScale.toc "$RELEASE_DIR/$ADDON_NAME/"
+          (cd "$RELEASE_DIR" && zip -r "${ADDON_NAME}-${GITHUB_REF_NAME}.zip" "$ADDON_NAME")
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/UIScale-${{ github.ref_name }}.zip
+          generate_release_notes: true
